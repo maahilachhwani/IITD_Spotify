@@ -22,7 +22,6 @@ Columns Description:
 19. time_signature: estimated time signature of the track (3 to 7).
 20. track_genre : the genre of the track.
 
-Current state - EDA (Work in progress)
 References: 
 
 https://www.kaggle.com/code/adisongoh/predicting-the-success-of-spotify-songs
