@@ -9,18 +9,69 @@ def load_pipeline_and_model():
     """load the pipeline object for preprocessing and the ml model"""
 
     preprocessing = joblib.load('Streamlit_objects/preprocessing.pkl')
-    rf_model = joblib.load('Streamlit_objects/random_forest_regressor.pkl')
+    best_model = joblib.load('Streamlit_objects/best_model.pkl')
     artists_encoder = joblib.load('Streamlit_objects/artists_encoder.pkl')
     genre_encoder = joblib.load('Streamlit_objects/genre_encoder.pkl')
-    return preprocessing, rf_model, artists_encoder, genre_encoder
+    all_results = joblib.load('Streamlit_objects/all_models_results.pkl')
+    return preprocessing, best_model, artists_encoder, genre_encoder, all_results
 
 def main():
     # load pipeline object and model
-    preprocessing, rf_model, artists_encoder, genre_encoder = load_pipeline_and_model()
+    preprocessing, best_model, artists_encoder, genre_encoder, all_results = load_pipeline_and_model()
 
     # side bar and title
-    st.sidebar.header('Track Features')
-    st.header('Spotify Track Popularity Prediction App')
+    st.sidebar.header('🎛️ Track Features')
+    st.header('🎵 Spotify Track Popularity Prediction App')
+    
+    # Model selector in sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.subheader('🤖 Model Selection')
+    selected_model = st.sidebar.selectbox(
+        'Choose Model:', 
+        list(all_results.keys()),
+        index=0  # Default to first model (best one)
+    )
+    
+    # Display selected model info
+    selected_model_info = all_results[selected_model]
+    st.sidebar.info(f"""
+    **{selected_model}**
+    - R² Score: {selected_model_info['r2']:.3f}
+    - RMSE: {selected_model_info['rmse']:.3f}
+    - MAE: {selected_model_info['mae']:.3f}
+    """)
+    st.sidebar.markdown("---")
+    
+    # Display model information
+    st.subheader('🤖 Model Performance Comparison')
+    
+    # Create columns for model comparison
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Best Model", "Random Forest", "R² = 0.161")
+    with col2:
+        st.metric("RMSE", "20.87", "Lower is better")
+    with col3:
+        st.metric("MAE", "16.57", "Lower is better")
+    
+    # Model comparison table
+    st.subheader('📊 All Models Performance')
+    model_data = []
+    for name, result in all_results.items():
+        model_data.append({
+            'Model': name,
+            'RMSE': f"{result['rmse']:.3f}",
+            'MAE': f"{result['mae']:.3f}", 
+            'R² Score': f"{result['r2']:.3f}",
+            'CV R² Mean': f"{result['cv_mean']:.3f}"
+        })
+    
+    model_df = pd.DataFrame(model_data)
+    model_df = model_df.sort_values('R² Score', ascending=False)
+    st.dataframe(model_df, use_container_width=True)
+    
+    st.markdown("---")
 
     # load image
     image = Image.open('Spotify.jpg')
@@ -67,10 +118,41 @@ def main():
     st.write(f'For a description of the audio features, visit the Spotify API documentation: https://developer.spotify.com/documentation/web-api/reference/#/operations/get-audio-features')
 
     # create button that generates prediction
-    if st.button('Predict'):
+    if st.button('🎯 Predict Popularity'):
+        # Use selected model instead of always using best model
+        current_model = all_results[selected_model]['model']
         input_features_processed = preprocessing.transform(input_features)
-        prediction = rf_model.predict(input_features_processed)[0]
-        st.success(f'Popularity Score: {np.round(prediction, 2)}')
+        prediction = current_model.predict(input_features_processed)[0]
+        
+        # Display prediction with styling
+        col1, col2, col3 = st.columns(3)
+        with col2:
+            st.success(f'🎵 **Predicted Popularity Score: {np.round(prediction, 1)}**')
+        
+        # Add interpretation
+        if prediction >= 70:
+            st.info("🔥 This track has potential to be a hit!")
+        elif prediction >= 50:
+            st.info("🎶 This track shows moderate popularity potential")
+        elif prediction >= 30:
+            st.info("📻 This track may appeal to niche audiences")
+        else:
+            st.info("🎧 This track might work well for specific playlists")
+        
+        # Show feature contribution (for models that support it)
+        if hasattr(current_model, 'feature_importances_'):
+            st.subheader('🔍 Feature Importance Analysis')
+            feature_names = input_features.columns
+            importances = current_model.feature_importances_
+            
+            # Create importance dataframe
+            importance_df = pd.DataFrame({
+                'Feature': feature_names,
+                'Importance': importances
+            }).sort_values('Importance', ascending=False)
+            
+            # Display top 5 most important features
+            st.bar_chart(importance_df.head().set_index('Feature'))
 
 if __name__ == '__main__':
     main()
