@@ -1,5 +1,6 @@
-Build a model to predict the success of a song on spotify. The column of interest is popularity in the dataset.
-Please refer Spoitify_iitd.csv for the given dataset to analyze.
+Build a model to predict the success of a song on spotify. 
+The column of interest is popularity in the dataset.
+Please refer Spoitify_iitd1.csv for the given dataset to analyze.
 Columns Description:
 1. track_id: The unique Spotify id for each track.
 2. artists: Names of the artists who prfrmed the track, separated by ';'.
